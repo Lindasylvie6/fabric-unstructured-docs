@@ -1,0 +1,13 @@
+// Run in a KQL queryset attached to your Eventhouse database. Run each command on its own.
+
+// 1) Stage table: receives chunks and the vector as JSON text from notebook 04.
+.create table DocChunksStage (chunk_id:string, doc_id:string, file_name:string, page_number:int, chunk_index:int, chunk_text:string, word_count:int, batch_id:string, content_vector_json:string)
+
+// 2) AFTER notebook 04 has written the stage table: build the vector table (vector as a dynamic array).
+.set-or-replace DocChunksVec <| DocChunksStage | extend content_vector = parse_json(content_vector_json) | project-away content_vector_json
+
+// 3) Check: expect 1536 dimensions for text-embedding-3-small.
+DocChunksVec | take 1 | project chunk_id, dims = array_length(content_vector)
+
+// 4) Optional: store vectors in a compact encoding. Verify the syntax against the current Microsoft Learn vector database tutorial first.
+.alter column DocChunksVec.content_vector policy encoding type='Vector16'
